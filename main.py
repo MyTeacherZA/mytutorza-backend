@@ -10,7 +10,7 @@ app = FastAPI(title="MyTutorZA Backend", version="1.0")
 
 # 2. Grab secure credentials from the Cloud Environment Variables
 SUPABASE_URL = os.getenv("supabase_url")
-SUPABASE_URL = os.getenv("supabase_key")
+SUPABASE_KEY = os.getenv("supabase_key")
 GEMINI_API_KEY = os.getenv("gemini_api_key")
 
 # Ensure critical variables are present when starting
