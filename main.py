@@ -9,9 +9,9 @@ from supabase import create_client, Client
 app = FastAPI(title="MyTutorZA Backend", version="1.0")
 
 # 2. Grab secure credentials from the Cloud Environment Variables
-SUPABASE_URL = os.getenv("https://bxvsrjwpdtkajnkqftbu.supabase.co")
-SUPABASE_KEY = os.getenv("sb_publishable_GI180ekd7OB0xmPTLQFoLg_up7cPtRD")
-GEMINI_API_KEY = os.getenv("AQ.Ab8RN6JNcPt9gtYkybaySn9_PRNOvBacPr7A75TdXlcw2k1ICg")
+SUPABASE_URL = os.getenv("supabase_url")
+SUPABASE_URL = os.getenv("supabase_key")
+GEMINI_API_KEY = os.getenv("gemini_api_key")
 
 # Ensure critical variables are present when starting
 if not SUPABASE_URL or not SUPABASE_KEY:
