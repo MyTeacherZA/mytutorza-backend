@@ -3,6 +3,8 @@ uvicorn
 supabase
 requests
 gunicorn
+tiktoken-binary==0.8.0
 crewai
 crewai-tools
 pydantic
+
