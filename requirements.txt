@@ -3,3 +3,6 @@ uvicorn
 supabase
 requests
 gunicorn
+crewai
+crewai-tools
+pydantic
