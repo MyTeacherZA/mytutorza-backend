@@ -74,7 +74,7 @@ from pydantic import BaseModel
 
 # Initialize the free Gemini client using your environment variable
 # Make sure you name your key 'GEMINI_API_KEY' in your Render environment setup
-client = genai.Client()
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 class StudentPayload(BaseModel):
     whatsapp_number: str
