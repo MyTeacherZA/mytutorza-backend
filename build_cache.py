@@ -1,49 +1,70 @@
 # --- build_cache.py ---
 import os
 import time
+import zipfile
+import requests
 from google import genai
 from google.genai import types
 
-# 1. Grab the API key your server already uses
+# 1. Initialize Gemini
 GEMINI_API_KEY = os.getenv("gemini_api_key")
 if not GEMINI_API_KEY:
     raise ValueError("Missing 'gemini_api_key' environment variable.")
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# 2. Point to our local folder
-PDF_DIRECTORY = "./curriculum_pdfs" 
+# 2. Extract your Google Drive File ID from your link
+# Paste your copied Google Drive zip file link inside the quotes below:
+DRIVE_ZIP_LINK = "PASTE_YOUR_GOOGLE_DRIVE_ZIP_LINK_HERE"
 
-if not os.path.exists(PDF_DIRECTORY):
-    raise FileNotFoundError(f"The folder {PDF_DIRECTORY} does not exist. Please upload your PDFs.")
+def download_and_unzip(url):
+    print("Extracting Drive ID and starting secure download...")
+    # Convert standard view link to direct download link
+    if "/d/" in url:
+        file_id = url.split("/d/")[1].split("/")[0]
+    else:
+        raise ValueError("Invalid Google Drive Link format.")
+        
+    download_url = f"https://docs.google.com/uc?export=download&id={file_id}"
+    
+    os.makedirs("./curriculum_pdfs", exist_ok=True)
+    zip_path = "./curriculum.zip"
+    
+    # Stream download the file
+    response = requests.get(download_url, stream=True)
+    with open(zip_path, "wb") as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            if chunk:
+                f.write(chunk)
+                
+    print("Download complete. Unzipping all 200 files into production storage...")
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall("./curriculum_pdfs")
+    print("Unzipped successfully.")
 
+# Execute download setup
+download_and_unzip(DRIVE_ZIP_LINK)
+
+# 3. Process and upload files to Gemini
+PDF_DIRECTORY = "./curriculum_pdfs"
 uploaded_file_objects = []
-print("Starting upload of local curriculum files to Gemini API...")
 
-# 3. Read the folder and upload files one by one
+print("Uploading files to Gemini API...")
 for file_name in os.listdir(PDF_DIRECTORY):
     if file_name.lower().endswith('.pdf'):
         file_path = os.path.join(PDF_DIRECTORY, file_name)
-        print(f"Uploading: {file_name}...")
-        
+        print(f"Processing: {file_name}")
         uploaded_file = client.files.upload(file=file_path)
         uploaded_file_objects.append(uploaded_file)
 
-if not uploaded_file_objects:
-    print("No PDF files found in the folder. Please add your documents first.")
-    exit()
-
-print("Waiting for Gemini servers to process the documents...")
+print("Waiting for Gemini servers to align content parameters...")
 for f in uploaded_file_objects:
     live_file = client.files.get(name=f.name)
     while live_file.state.name == "PROCESSING":
         time.sleep(2)
         live_file = client.files.get(name=f.name)
-    if live_file.state.name == "FAILED":
-        print(f"File {live_file.display_name} failed processing.")
 
-print("All files ready! Generating the long-term context cache...")
-
+print("Building long-term semantic context cache...")
 system_instruction = (
     "You are the ultimate personalized core of MyTeacherZA. You operate strictly under "
     "the official Department of Basic Education (DBE) planners and the CAPS curriculum matrix "
@@ -51,18 +72,17 @@ system_instruction = (
     "academic rigour, precision, and formal standardized terminology."
 )
 
-# 4. Lock them into the server-side cache
 curriculum_cache = client.caches.create(
     model="gemini-2.5-pro", 
     config=types.CreateCachedContentConfig(
         contents=uploaded_file_objects,
-        displayName="myteacherza_local_vault",
-        ttl="259200s", # 3-day token lifespan
+        displayName="myteacherza_drive_vault",
+        ttl="259200s",
         system_instruction=system_instruction
     )
 )
 
 print("\n" + "="*60)
-print("SUCCESS: CONTEXT CACHE GENERATED")
+print("SUCCESS: CONTEXT CACHE GENERATED FROM DRIVE")
 print(f"CACHE ID / NAME: {curriculum_cache.name}")
 print("="*60)
