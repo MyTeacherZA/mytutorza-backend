@@ -589,3 +589,81 @@ async def process_classroom_interaction(payload: InteractiveTutoringPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# =====================================================================
+# SYSTEM DIAGNOSTICS & ENGINE VERIFICATION LOOP
+# =====================================================================
+
+@app.get("/api/v1/system/verify-engine-sync")
+async def verify_engine_database_sync():
+    """
+    Production health check that tests the exact live pipeline 
+    the 3 AI agents rely on to read, write, and process personalized structures.
+    """
+    diagnostic_number = "SYSTEM_TEST_CONN"
+    
+    # Comprehensive structural test payload matching database constraints
+    test_profile = {
+        "whatsapp_number": diagnostic_number,
+        "full_name": "System",
+        "surname": "Diagnostics",
+        "age": 18,
+        "grade": 12,
+        "current_term": 1,
+        "preferred_language": "English",
+        "birth_date": "2008-01-01",
+        "onboarding_stage": "COMPLETED",
+        "mercury_sign": "Capricorn",
+        "delivery_element": "🌍 Earth",
+        "cognitive_style_label": "Structured-Systematic Learner",
+        "delivery_instructions": "Step-by-step sequential logic, explicit real-world context.",
+        "cognitive_vector": {
+            "analytical": 90, 
+            "fast_processor": 50, 
+            "global": 40, 
+            "visualizer": 60
+        },
+        "academic_tiers": {
+            "Physical Sciences": {
+                "mark": 82.0, 
+                "tier": "🟢 Tier 3 – Peak Maintainer", 
+                "focus_strategy": "Advanced complex variations, non-linear reasoning challenges..."
+            }
+        },
+        "overall_average": 82.0,
+        "payment_verified": True
+    }
+    
+    try:
+        # 1. Test Write: Confirm database tables allow full schema writes
+        supabase.table("student_profiles").upsert(test_profile).execute()
+        
+        # 2. Test Read: Verify multi-agent context retrieval data mapping
+        read_check = supabase.table("student_profiles").select("*").eq("whatsapp_number", diagnostic_number).execute()
+        
+        if not read_check.data:
+            raise HTTPException(status_code=500, detail="Database write accepted but failed to parse during retrieval check.")
+            
+        verified_record = read_check.data[0]
+        
+        # 3. Test Cleanup: Flush the diagnostic footprint immediately
+        supabase.table("student_profiles").delete().eq("whatsapp_number", diagnostic_number).execute()
+        
+        return {
+            "status": "HEALTHY",
+            "database_connection": "CONNECTED",
+            "caps_workspace_files_count": len(workspace_files),
+            "engine_integrity_check": {
+                "delivery_element": verified_record.get("delivery_element"),
+                "cognitive_vector_synchronized": isinstance(verified_record.get("cognitive_vector"), dict),
+                "academic_tiers_synchronized": isinstance(verified_record.get("academic_tiers"), dict)
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        # Secure safety fallback: Clean up even if an error is triggered midway
+        try:
+            supabase.table("student_profiles").delete().eq("whatsapp_number", diagnostic_number).execute()
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=f"Core Engine Desync: {str(e)}")
