@@ -1030,3 +1030,90 @@ async def handle_inbound_whatsapp_message(request: Request):
 
     except Exception as e:
         return twiml_whatsapp_response("An internal system loop error interrupted the processing flow.")
+
+# =====================================================================
+# PART 5: DYNAMIC STORAGE VAULT CURRICULUM INTEGRATION ENGINE
+# =====================================================================
+
+class VaultTutoringPayload(BaseModel):
+    user_id: str = Field(..., description="Unique ID matching the authentication profile")
+    student_prompt: str = Field(..., description="The query or question submitted by the student")
+
+@app.post("/api/v1/tutor/vault-chat-session")
+async def process_vault_classroom_interaction(payload: VaultTutoringPayload):
+    """
+    Wraps the curriculum storage vault engagement function into a secure 
+    production API endpoint matching the FastAPI engine architecture.
+    """
+    try:
+        # Resolve specific backend naming variations to avoid environment collisions
+        service_role_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("supabase_key")
+        
+        if not service_role_key:
+            raise HTTPException(status_code=500, detail="Missing vault authentication credentials.")
+            
+        # Initialize an elevated service role client to safely access private storage buckets
+        vault_supabase: Client = create_client(SUPABASE_URL, service_role_key)
+        
+        # 1. Fetch student data to determine grade mapping
+        profile_response = vault_supabase.table("profiles").select("grade_level").eq("id", payload.user_id).single().execute()
+        if not profile_response.data:
+            raise HTTPException(status_code=404, detail="Student user profile not found.")
+        
+        student_grade = profile_response.data["grade_level"]
+
+        # 2. Locate matching curriculum document pointers
+        meta_response = vault_supabase.table("curriculum_metadata")\
+            .select("storage_file_path, subject, topic_title")\
+            .eq("grade", student_grade)\
+            .limit(1).execute()
+
+        if not meta_response.data:
+            file_bytes = None
+            context_string = f"System warning: No specific CAPS storage files mapped for {student_grade}."
+        else:
+            file_meta = meta_response.data[0]
+            file_path = file_meta["storage_file_path"]
+            
+            # 3. Stream binary data directly out of the Supabase storage vault bucket
+            file_bytes = vault_supabase.storage.from_("curriculum-vault").download(file_path)
+            context_string = f"Using verified CAPS Framework material for {file_meta['subject']} - Topic: {file_meta['topic_title']}."
+
+        # 4. Package contents array using structural Parts for the GenAI Engine
+        contents_payload = []
+        
+        if file_bytes:
+            contents_payload.append(
+                types.Part.from_bytes(
+                    data=file_bytes,
+                    mime_type="application/pdf"
+                )
+            )
+        
+        contents_payload.append(f"Context: {context_string}\n\nStudent Question: {payload.student_prompt}")
+
+        # 5. Trigger Agent Inference Generation via the unified Google GenAI client
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=contents_payload,
+            config=types.GenerateContentConfig(
+                system_instruction=(
+                    "You are the master engine of MyTutorZA, an expert personal tutor aligned to the South African CAPS curriculum. "
+                    "Analyze the attached reference material carefully. Formulate clear, empathetic explanations, breaking down "
+                    "complex terms into step-by-step guidance. Use local contexts when explaining numerical or science questions."
+                ),
+                temperature=0.35,
+            )
+        )
+        
+        return {
+            "status": "success",
+            "user_id": payload.user_id,
+            "response_text": response.text
+        }
+
+    except HTTPException:
+        raise
+    except Exception as error:
+        print(f"[Agent Execution Engine Failure Error]: {str(error)}")
+        raise HTTPException(status_code=500, detail="Internal agent execution loop failure.")
