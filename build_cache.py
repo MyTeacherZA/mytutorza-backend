@@ -14,8 +14,8 @@ if not GEMINI_API_KEY:
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 # 2. Extract your Google Drive File ID from your link
-# Paste your copied Google Drive zip file link inside the quotes below:
-DRIVE_ZIP_LINK = "PASTE_YOUR_GOOGLE_DRIVE_ZIP_LINK_HERE"
+# Paste your copied Google Drive file link inside the quotes below:
+DRIVE_ZIP_LINK = "https://drive.google.com/drive/folders/1EC4xL71EqD3tFuphsrcSva3BmYvBNXt8"
 
 def download_and_unzip(url):
     print("Extracting Drive ID and starting secure download...")
